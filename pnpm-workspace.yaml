@@ -4,3 +4,5 @@ allowBuilds:
 ignoredBuiltDependencies:
   - "@google/genai"
   - protobufjs
+minimumReleaseAgeExclude:
+  - '@aliou/biome-plugins@0.15.0'
