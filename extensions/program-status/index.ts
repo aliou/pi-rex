@@ -184,6 +184,10 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
     finishedText = undefined;
     currentTool = undefined;
     writer.reset();
+    // A previous process (or reload) can leave the editor record behind: it
+    // is cleared on foreground changes, not on exit, and pi suspends while
+    // an editor runs, so a live record here is always stale.
+    writer.clear("editor");
     syncAgent();
     syncBlocked();
     for (const id of activity.keys()) syncActivity(id);
