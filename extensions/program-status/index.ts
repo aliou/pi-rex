@@ -258,8 +258,12 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
   });
 
   // Pi starts waiting on a blocking extension UI prompt: ctx.ui select,
-  // confirm, input, editor, and custom all come through here.
+  // confirm, input, editor, and custom all come through here. A contributor
+  // can claim the reserved ui-prompt slot first (its event fires before the
+  // dialog opens) to replace the generic label with a real one; in that
+  // case the generic report stays out of the way.
   pi.on("ui_prompt_start", (event) => {
+    if (blocked.has(UI_PROMPT_SOURCE)) return;
     setBlocked(UI_PROMPT_SOURCE, {
       kind: "question",
       label: event.title ?? "Waiting for input",

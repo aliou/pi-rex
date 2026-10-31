@@ -25,7 +25,14 @@ export interface RexBlockedPayload {
   active: boolean;
   kind: "permission" | "question" | "auth";
   label?: string;
-  /** Stable id for the contributor; each source gets its own child record. */
+  /**
+   * Stable id for the contributor; each source gets its own child record.
+   * `ui-prompt` is reserved: that record is normally pi-rex's generic report
+   * for pi's own `ui_prompt_start` ("Waiting for input"). Emitting with this
+   * source replaces the generic label with a real one, and pi-rex skips the
+   * generic report when a contributor claimed the slot before the dialog
+   * opened. Clear it when the prompt resolves.
+   */
   source: string;
 }
 
