@@ -330,10 +330,22 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
   // ctrl+z suspends pi). Show it as a working child record: rex drops working
   // records when the foreground process exits, so the record disappears on
   // its own when the editor closes.
+  //
+  // Pi itself is node, and process_changed fires when a finished tool's shell
+  // hands the foreground back to it — often right after agent_settled, so
+  // runActive is already false. Treating that as an editor used to write a
+  // working record that nothing ever cleared: the foreground stays pi, so no
+  // later event reaches the clear branch, and rex keeps the record while pi
+  // lives. Report only a foreground process we can tell isn't pi.
   const stopForeground = pi.events.on(REX_FOREGROUND_EVENT, (data) => {
     const payload = data as RexForegroundPayload | undefined;
     if (!payload) return;
-    if (payload.name && !runActive) {
+    if (
+      payload.name &&
+      payload.pid &&
+      payload.pid !== process.pid &&
+      !runActive
+    ) {
       writer.report({
         state: "working",
         id: "editor",
