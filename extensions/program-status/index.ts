@@ -165,11 +165,13 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
    * shows it twice. pi writes synchronously inside its subscriber, but the
    * session dispatch awaits between subscribers, so a microtask can land
    * before pi's write; setImmediate defers past the whole dispatch.
+   * Without a session name pi's record carries no message, so the rewrite
+   * would resend an identical report; skip it.
    * Dialog messages that carry real information (errors, "Compacting
    * context", login) are left alone.
    */
   function overrideRoot(): void {
-    if (!enabled) return;
+    if (!enabled || !sessionName) return;
     setImmediate(() => {
       writer.report({ state: runActive ? "working" : "done", app: "pi" });
     });
