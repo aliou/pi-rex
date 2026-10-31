@@ -46,8 +46,13 @@ export class ProgramStatusWriter {
     this.write(sequence);
   }
 
-  /** Remove one record and every record beneath it. */
-  clear(id: string): void {
+  /**
+   * Remove one record and every record beneath it. Skips the write when the
+   * writer never sent the record, unless force is set: a fresh writer (new
+   * process, reload) has an empty history but the terminal may still hold
+   * records a previous incarnation left behind.
+   */
+  clear(id: string, force = false): void {
     const sequence = formatStatusReport(
       id === "" ? { state: "clear" } : { state: "clear", id },
     );
@@ -60,7 +65,8 @@ export class ProgramStatusWriter {
         wasPresent = true;
       }
     }
-    if (wasPresent) this.write(sequence);
+    if (!wasPresent && !force) return;
+    this.write(sequence);
   }
 
   /** Forget every record without writing anything (used on shutdown). */
