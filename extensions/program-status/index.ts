@@ -164,11 +164,14 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
     finishedText = undefined;
     currentTool = undefined;
     writer.reset();
-    // A previous process (or reload) can leave the editor record behind: it
-    // is cleared on foreground changes, not on exit, and pi suspends while
-    // an editor runs, so a live record here is always stale. The writer is
-    // fresh, so force the clear past its history check.
+    // A previous process (or reload) can leave records behind that this
+    // version no longer writes, and `done` records survive process exit, so
+    // nothing else would clear them: the editor record (cleared on foreground
+    // changes, not on exit, and pi suspends while an editor runs, so a live
+    // record here is always stale), and the agent record the pre-fold design
+    // wrote. The writer is fresh, so force the clears past its history check.
     writer.clear("editor", true);
+    writer.clear("agent", true);
     syncAgent();
     syncBlocked();
     for (const id of activity.keys()) syncActivity(id);
