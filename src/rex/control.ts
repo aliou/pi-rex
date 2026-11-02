@@ -142,7 +142,17 @@ export class RexControlClient {
     }
     if (frame.type === "event") {
       if (typeof frame.seq === "number" && frame.payload) {
-        this.eventHandler?.({ seq: frame.seq, payload: frame.payload });
+        // A listener bug must never propagate into the WebSocket receiver:
+        // a throw here escapes as an uncaught exception and kills the
+        // process. Drop the event instead.
+        try {
+          this.eventHandler?.({ seq: frame.seq, payload: frame.payload });
+        } catch (err) {
+          // Intentionally ignored: a listener bug must never propagate into
+          // the WebSocket receiver and kill the process as an uncaught
+          // exception; the event is dropped.
+          void err;
+        }
       }
       return;
     }
