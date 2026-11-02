@@ -36,12 +36,17 @@ export class ProgramStatusWriter {
     }
   }
 
-  /** Send one report if it changed since the last send. Leaves every other record alone. */
-  report(report: StatusReport): void {
+  /**
+   * Send one report if it changed since the last send. Leaves every other
+   * record alone. force skips the dedupe check: use it when something else
+   * may have replaced the record with content identical to the last send,
+   * so the terminal no longer holds what lastSent describes.
+   */
+  report(report: StatusReport, force = false): void {
     const sequence = formatStatusReport(report);
     if (!sequence) return;
     const id = report.id ?? "";
-    if (this.lastSent.get(id) === sequence) return;
+    if (!force && this.lastSent.get(id) === sequence) return;
     this.lastSent.set(id, sequence);
     this.write(sequence);
   }

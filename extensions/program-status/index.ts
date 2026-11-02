@@ -23,14 +23,19 @@ import { watchExternalEditor } from "./editor";
 /**
  * Program status (OSC 7501) for pi.
  *
- * Pi reports its own root record (working, done, error, idle, built-in
- * dialogs), so this extension only writes namespaced child records; the root
- * stays pi's. Reports go to stdout, which is the same fd the TUI renders to;
- * the sequences are non-printing and do not disturb the TUI.
+ * The agent state lives on the root record, so a plain pi session renders as
+ * a single status entry; child records are only for work beside the agent.
+ * Pi owns the root too and writes it on the same events — with the session
+ * name as the message, which the window title already shows — so this
+ * extension re-asserts the root after each of pi's writes. Reports go to
+ * stdout, which is the same fd the TUI renders to; the sequences are
+ * non-printing and do not disturb the TUI.
  *
  * Records:
  *
- *   agent                  the agent state machine: working, done, error, idle
+ *   root                   the agent state machine: working (msg = current
+ *                          tool), done ("Finished"), error (first error
+ *                          line), idle
  *   blocked/<source>       one record per blocked source: pi's own ui prompts
  *                          (ui_prompt_start) and contributor `rex:blocked` events
  *   activity/<id>          child work reported through `rex:activity:*` by
@@ -40,7 +45,6 @@ import { watchExternalEditor } from "./editor";
  * dedup state without clearing: the terminal keeps the final picture.
  */
 
-const AGENT_ID = "agent";
 const UI_PROMPT_SOURCE = "ui-prompt";
 
 interface BlockedEntry {
@@ -77,38 +81,30 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
     pi.events.emit(REX_STATE_EVENT, payload);
   }
 
-  function syncAgent(): void {
-    if (!enabled) return;
-    const title = sessionName ?? "pi";
-    let report: StatusReport;
+  function agentReport(): StatusReport {
     if (runActive) {
-      report = {
-        state: "working",
-        id: AGENT_ID,
-        app: "pi",
-        title,
-        msg: currentTool,
-      };
-    } else if (errorText) {
-      report = {
-        state: "error",
-        id: AGENT_ID,
-        app: "pi",
-        title,
-        msg: errorText,
-      };
-    } else if (finishedText) {
-      report = {
-        state: "done",
-        id: AGENT_ID,
-        app: "pi",
-        title,
-        msg: finishedText,
-      };
-    } else {
-      report = { state: "idle", id: AGENT_ID, app: "pi", title };
+      return currentTool
+        ? { state: "working", app: "pi", msg: currentTool }
+        : { state: "working", app: "pi" };
     }
-    writer.report(report);
+    if (errorText) return { state: "error", app: "pi", msg: errorText };
+    if (finishedText) return { state: "done", app: "pi", msg: finishedText };
+    return { state: "idle", app: "pi" };
+  }
+
+  /**
+   * Assert the agent state onto the root record. Pi writes the root
+   * synchronously inside its subscriber, so the assert defers past the whole
+   * dispatch: the session dispatch awaits between subscribers, so a
+   * setImmediate lands after pi's write. Events where pi also writes the
+   * root pass force=true — pi's write can replace our record with a sequence
+   * the writer would otherwise dedupe away, leaving pi's session-name
+   * message (already shown by the window title) on the root.
+   */
+  function syncAgent(force = false): void {
+    if (!enabled) return;
+    const report = agentReport();
+    setImmediate(() => writer.report(report, force));
   }
 
   function syncBlocked(): void {
@@ -159,24 +155,6 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
     return text?.split(/\r?\n/, 1)[0]?.trim() || undefined;
   }
 
-  /**
-   * Rewrite the root record after pi writes it, dropping the session-name
-   * message: pi also sets the window title to the session name, so rex
-   * shows it twice. pi writes synchronously inside its subscriber, but the
-   * session dispatch awaits between subscribers, so a microtask can land
-   * before pi's write; setImmediate defers past the whole dispatch.
-   * Without a session name pi's record carries no message, so the rewrite
-   * would resend an identical report; skip it.
-   * Dialog messages that carry real information (errors, "Compacting
-   * context", login) are left alone.
-   */
-  function overrideRoot(): void {
-    if (!enabled || !sessionName) return;
-    setImmediate(() => {
-      writer.report({ state: runActive ? "working" : "done", app: "pi" });
-    });
-  }
-
   pi.on("session_start", (_event, ctx) => {
     enabled = ctx.mode === "tui" && process.stdout.isTTY === true;
     if (!enabled) return;
@@ -198,11 +176,9 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
   });
 
   pi.on("session_info_changed", (event) => {
-    const renamed = event.name !== sessionName;
     sessionName = event.name;
-    if (renamed) syncAgent();
     // pi rewrites the root report on every info change, named or not.
-    overrideRoot();
+    syncAgent(true);
   });
 
   pi.on("agent_start", () => {
@@ -211,9 +187,8 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
     finishedText = undefined;
     currentTool = undefined;
     writer.clear("editor");
-    syncAgent();
+    syncAgent(true);
     emitState("working");
-    overrideRoot();
   });
 
   pi.on("tool_execution_start", (event) => {
@@ -228,12 +203,12 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
 
   pi.on("session_compact", () => {
     currentTool = "Compacting context";
-    syncAgent();
+    syncAgent(true);
   });
 
   pi.on("session_compact_failed", () => {
     currentTool = undefined;
-    syncAgent();
+    syncAgent(true);
   });
 
   pi.on("message_end", (event) => {
@@ -242,7 +217,7 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
       errorText = firstLine(event.message.errorMessage) ?? "Error";
       return;
     }
-    overrideRoot();
+    syncAgent(true);
   });
 
   pi.on("agent_settled", (event) => {
@@ -251,17 +226,12 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
     if (event.aborted) {
       errorText = undefined;
       finishedText = undefined;
-      // Pi reports idle without a message; nothing to rewrite.
-      syncAgent();
-      emitState("idle");
-      return;
-    }
-    if (!errorText) {
+    } else if (!errorText) {
       finishedText = "Finished";
-      overrideRoot();
     }
-    syncAgent();
-    emitState(errorText ? "error" : "done");
+    // pi reports the settled state on the root; re-assert our message past it.
+    syncAgent(true);
+    emitState(event.aborted ? "idle" : errorText ? "error" : "done");
   });
 
   // Pi starts waiting on a blocking extension UI prompt: ctx.ui select,
@@ -279,6 +249,9 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
 
   pi.on("ui_prompt_end", () => {
     setBlocked(UI_PROMPT_SOURCE, undefined);
+    // pi rewrites the root when the dialog closes (working + session name,
+    // or the resting state); re-assert the agent's message past it.
+    syncAgent(true);
   });
 
   const stopBlocked = pi.events.on(REX_BLOCKED_EVENT, (data) => {
