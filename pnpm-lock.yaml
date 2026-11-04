@@ -13,8 +13,8 @@ importers:
         version: 8.22.0
     devDependencies:
       '@aliou/biome-plugins':
-        specifier: ^0.15.0
-        version: 0.15.0(@biomejs/biome@2.6.4)
+        specifier: ^0.17.0
+        version: 0.17.0(@biomejs/biome@2.6.4)
       '@biomejs/biome':
         specifier: ^2.6.4
         version: 2.6.4
@@ -33,8 +33,8 @@ importers:
 
 packages:
 
-  '@aliou/biome-plugins@0.15.0':
-    resolution: {integrity: sha512-ZbiRjxkaLd3LPrlbwCy9zRYct7p5hxB8b33NRLJynAZYfX6pVjLZFqC6sQVzeKB/UhdB54DKIzCDkJRF+o3kow==}
+  '@aliou/biome-plugins@0.17.0':
+    resolution: {integrity: sha512-y87aE3x3fnvOWC99EjzXRdHqJQh8wtkrMbU9mlthIfX1FfFDL1euwWW0Y6Am/upW8XzNgR09s7v0EfcQ2AHzxw==}
     peerDependencies:
       '@biomejs/biome': '>=2.6.0'
 
@@ -272,6 +272,7 @@ packages:
   '@smithy/core@3.38.0':
     resolution: {integrity: sha512-aLyyCnK2p4yvNA2TaM+5owXqb+rZGSiUKEsNP329AzeYnERtAz7NrlTbRsaxqmZ0ooxwoID8LMm959UGQQDIsg==}
     engines: {node: '>=18.0.0'}
+    deprecated: Deprecated due to a bug in custom logger data redaction. See https://github.com/aws/aws-sdk-js-v3/issues/8393.
 
   '@smithy/credential-provider-imds@4.5.2':
     resolution: {integrity: sha512-A9uSdn72ozbRUSit0eib0TW7nXuNPlaeM0zcGkJ+nE6tFcSDbnmtwoxbTCFBukVQcszDAyvsd7+rTduPTXpygg==}
@@ -622,7 +623,7 @@ packages:
 
 snapshots:
 
-  '@aliou/biome-plugins@0.15.0(@biomejs/biome@2.6.4)':
+  '@aliou/biome-plugins@0.17.0(@biomejs/biome@2.6.4)':
     dependencies:
       '@biomejs/biome': 2.6.4
 

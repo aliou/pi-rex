@@ -3,4 +3,4 @@ allowBuilds:
   protobufjs: false
 
 minimumReleaseAgeExclude:
-  - '@aliou/biome-plugins@0.15.0'
+  - '@aliou/biome-plugins'
