@@ -1,5 +1,5 @@
 {
-  description = "pi-rex";
+  description = "pi-program-status";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";

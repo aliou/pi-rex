@@ -1,15 +1,15 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
-  REX_ACTIVITY_END_EVENT,
-  REX_ACTIVITY_SPAWN_EVENT,
-  REX_ACTIVITY_UPDATE_EVENT,
-  REX_BLOCKED_EVENT,
-  REX_STATE_EVENT,
-  type RexActivityEndPayload,
-  type RexActivitySpawnPayload,
-  type RexActivityUpdatePayload,
-  type RexBlockedPayload,
-  type RexStatePayload,
+  PROGRAM_STATUS_ACTIVITY_END_EVENT,
+  PROGRAM_STATUS_ACTIVITY_SPAWN_EVENT,
+  PROGRAM_STATUS_ACTIVITY_UPDATE_EVENT,
+  PROGRAM_STATUS_BLOCKED_EVENT,
+  PROGRAM_STATUS_STATE_EVENT,
+  type ProgramStatusActivityEndPayload,
+  type ProgramStatusActivitySpawnPayload,
+  type ProgramStatusActivityUpdatePayload,
+  type ProgramStatusBlockedPayload,
+  type ProgramStatusStatePayload,
 } from "../../src/contract";
 import type {
   ProgramKind,
@@ -34,9 +34,11 @@ import { ProgramStatusWriter } from "../../src/program-status/writer";
  *                          tool), done ("Finished"), error (first error
  *                          line), idle
  *   blocked/<source>       one record per blocked source: pi's own ui prompts
- *                          (ui_prompt_start) and contributor `rex:blocked` events
- *   activity/<id>          child work reported through `rex:activity:*` by
- *                          bridge extensions (subagents, processes, tasks)
+ *                          (ui_prompt_start) and contributor `program-status:blocked`
+ *                          events
+ *   activity/<id>          child work reported through
+ *                          `program-status:activity:*` by bridge extensions
+ *                          (subagents, processes, tasks)
  *
  * `done` and `error` records survive process exit, so shutdown forgets the
  * dedup state without clearing: the terminal keeps the final picture.
@@ -72,10 +74,10 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
     process.stdout.write(sequence);
   });
 
-  function emitState(state: RexStatePayload["state"]): void {
-    const payload: RexStatePayload = { state };
+  function emitState(state: ProgramStatusStatePayload["state"]): void {
+    const payload: ProgramStatusStatePayload = { state };
     if (state === "working") payload.message = sessionName;
-    pi.events.emit(REX_STATE_EVENT, payload);
+    pi.events.emit(PROGRAM_STATUS_STATE_EVENT, payload);
   }
 
   function agentReport(): StatusReport {
@@ -249,8 +251,8 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
     syncAgent(true);
   });
 
-  const stopBlocked = pi.events.on(REX_BLOCKED_EVENT, (data) => {
-    const payload = data as RexBlockedPayload | undefined;
+  const stopBlocked = pi.events.on(PROGRAM_STATUS_BLOCKED_EVENT, (data) => {
+    const payload = data as ProgramStatusBlockedPayload | undefined;
     if (!payload?.source) return;
     setBlocked(
       payload.source,
@@ -260,36 +262,42 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
     );
   });
 
-  const stopSpawn = pi.events.on(REX_ACTIVITY_SPAWN_EVENT, (data) => {
-    const payload = data as RexActivitySpawnPayload | undefined;
-    if (!payload?.id || !payload.title || activity.has(payload.id)) return;
-    activity.set(payload.id, {
-      title: payload.title,
-      app: payload.app ?? "pi",
-      report: { state: "working", app: "pi", msg: payload.msg },
-    });
-    syncActivity(payload.id);
-  });
+  const stopSpawn = pi.events.on(
+    PROGRAM_STATUS_ACTIVITY_SPAWN_EVENT,
+    (data) => {
+      const payload = data as ProgramStatusActivitySpawnPayload | undefined;
+      if (!payload?.id || !payload.title || activity.has(payload.id)) return;
+      activity.set(payload.id, {
+        title: payload.title,
+        app: payload.app ?? "pi",
+        report: { state: "working", app: "pi", msg: payload.msg },
+      });
+      syncActivity(payload.id);
+    },
+  );
 
-  const stopUpdate = pi.events.on(REX_ACTIVITY_UPDATE_EVENT, (data) => {
-    const payload = data as RexActivityUpdatePayload | undefined;
-    const entry = activity.get(payload?.id ?? "");
-    if (!entry || !payload) return;
-    const { state, kind, msg, progress, title, app } = payload;
-    entry.report = {
-      state,
-      app: "pi",
-      ...(state === "blocked" && kind ? { kind } : {}),
-      ...(progress !== undefined ? { progress } : {}),
-      ...(msg !== undefined ? { msg } : {}),
-    };
-    if (title) entry.title = title;
-    if (app) entry.app = app;
-    syncActivity(payload.id);
-  });
+  const stopUpdate = pi.events.on(
+    PROGRAM_STATUS_ACTIVITY_UPDATE_EVENT,
+    (data) => {
+      const payload = data as ProgramStatusActivityUpdatePayload | undefined;
+      const entry = activity.get(payload?.id ?? "");
+      if (!entry || !payload) return;
+      const { state, kind, msg, progress, title, app } = payload;
+      entry.report = {
+        state,
+        app: "pi",
+        ...(state === "blocked" && kind ? { kind } : {}),
+        ...(progress !== undefined ? { progress } : {}),
+        ...(msg !== undefined ? { msg } : {}),
+      };
+      if (title) entry.title = title;
+      if (app) entry.app = app;
+      syncActivity(payload.id);
+    },
+  );
 
-  const stopEnd = pi.events.on(REX_ACTIVITY_END_EVENT, (data) => {
-    const payload = data as RexActivityEndPayload | undefined;
+  const stopEnd = pi.events.on(PROGRAM_STATUS_ACTIVITY_END_EVENT, (data) => {
+    const payload = data as ProgramStatusActivityEndPayload | undefined;
     const entry = activity.get(payload?.id ?? "");
     if (!entry || !payload) return;
     entry.report = {

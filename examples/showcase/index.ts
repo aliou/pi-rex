@@ -1,16 +1,17 @@
 import { appendFileSync, readFileSync } from "node:fs";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
-  REX_ACTIVITY_END_EVENT,
-  REX_ACTIVITY_SPAWN_EVENT,
-  REX_ACTIVITY_UPDATE_EVENT,
+  PROGRAM_STATUS_ACTIVITY_END_EVENT,
+  PROGRAM_STATUS_ACTIVITY_SPAWN_EVENT,
+  PROGRAM_STATUS_ACTIVITY_UPDATE_EVENT,
 } from "../../src/contract";
 
 /**
- * Demo scaffold: drives pi-rex activity records from a JSON timeline so a
- * recording can show subagent-style workers without a second agent.
+ * Demo scaffold: drives program-status activity records from a JSON
+ * timeline so a recording can show subagent-style workers without a second
+ * agent.
  *
- * PI_REX_SHOWCASE points at a config file:
+ * PI_PROGRAM_STATUS_SHOWCASE points at a config file:
  *
  *   {
  *     "workers": [
@@ -22,7 +23,8 @@ import {
  *
  * Each worker: { id, title, startMsg, durationMs, doneMsg }. It reports
  * working with progress climbing to 90, then ends done. Every step is
- * traced to PI_REX_SHOWCASE_LOG (default /tmp/pi-rex-showcase.jsonl).
+ * traced to PI_PROGRAM_STATUS_SHOWCASE_LOG (default
+ * /tmp/pi-program-status-showcase.jsonl).
  */
 
 interface WorkerConfig {
@@ -52,7 +54,8 @@ interface ShowcaseConfig {
 }
 
 const LOG_PATH =
-  process.env.PI_REX_SHOWCASE_LOG ?? "/tmp/pi-rex-showcase.jsonl";
+  process.env.PI_PROGRAM_STATUS_SHOWCASE_LOG ??
+  "/tmp/pi-program-status-showcase.jsonl";
 
 function trace(step: string, data: unknown): void {
   try {
@@ -66,7 +69,7 @@ function trace(step: string, data: unknown): void {
 }
 
 function loadConfig(): ShowcaseConfig {
-  const path = process.env.PI_REX_SHOWCASE;
+  const path = process.env.PI_PROGRAM_STATUS_SHOWCASE;
   if (!path) return { workers: [] };
   try {
     return JSON.parse(readFileSync(path, "utf-8")) as ShowcaseConfig;
@@ -85,7 +88,7 @@ export default function showcaseExtension(pi: ExtensionAPI): void {
   function runWorker(worker: WorkerConfig): void {
     if (spawned.has(worker.id)) return;
     spawned.add(worker.id);
-    pi.events.emit(REX_ACTIVITY_SPAWN_EVENT, {
+    pi.events.emit(PROGRAM_STATUS_ACTIVITY_SPAWN_EVENT, {
       id: worker.id,
       title: worker.title,
       msg: worker.startMsg,
@@ -100,7 +103,7 @@ export default function showcaseExtension(pi: ExtensionAPI): void {
       if (blocked) return;
       const elapsed = Date.now() - startedAt;
       const progress = Math.min(90, Math.round((elapsed / durationMs) * 90));
-      pi.events.emit(REX_ACTIVITY_UPDATE_EVENT, {
+      pi.events.emit(PROGRAM_STATUS_ACTIVITY_UPDATE_EVENT, {
         id: worker.id,
         state: "working",
         progress,
@@ -116,7 +119,7 @@ export default function showcaseExtension(pi: ExtensionAPI): void {
       const { atMs, forMs, kind, msg } = worker.blocked;
       at(atMs, () => {
         blocked = true;
-        pi.events.emit(REX_ACTIVITY_UPDATE_EVENT, {
+        pi.events.emit(PROGRAM_STATUS_ACTIVITY_UPDATE_EVENT, {
           id: worker.id,
           state: "blocked",
           kind,
@@ -126,7 +129,7 @@ export default function showcaseExtension(pi: ExtensionAPI): void {
       });
       at(atMs + forMs, () => {
         blocked = false;
-        pi.events.emit(REX_ACTIVITY_UPDATE_EVENT, {
+        pi.events.emit(PROGRAM_STATUS_ACTIVITY_UPDATE_EVENT, {
           id: worker.id,
           state: "working",
         });
@@ -136,7 +139,7 @@ export default function showcaseExtension(pi: ExtensionAPI): void {
 
     at(durationMs, () => {
       clearInterval(interval);
-      pi.events.emit(REX_ACTIVITY_END_EVENT, {
+      pi.events.emit(PROGRAM_STATUS_ACTIVITY_END_EVENT, {
         id: worker.id,
         state: worker.errorMsg ? "error" : "done",
         msg: worker.errorMsg ?? worker.doneMsg,

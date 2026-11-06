@@ -6,9 +6,9 @@
  */
 
 /** pi lifecycle state, emitted by the program-status extension on every change. */
-export const REX_STATE_EVENT = "rex:state";
+export const PROGRAM_STATUS_STATE_EVENT = "program-status:state";
 
-export interface RexStatePayload {
+export interface ProgramStatusStatePayload {
   state: "working" | "idle" | "done" | "error";
   message?: string;
 }
@@ -19,9 +19,9 @@ export interface RexStatePayload {
  * outside those paths (external UIs, custom widgets with their own label or
  * kind).
  */
-export const REX_BLOCKED_EVENT = "rex:blocked";
+export const PROGRAM_STATUS_BLOCKED_EVENT = "program-status:blocked";
 
-export interface RexBlockedPayload {
+export interface ProgramStatusBlockedPayload {
   active: boolean;
   kind: "permission" | "question" | "auth";
   label?: string;
@@ -38,9 +38,10 @@ export interface RexBlockedPayload {
 }
 
 /** A child record appears: a subagent, a process, a long-running task. */
-export const REX_ACTIVITY_SPAWN_EVENT = "rex:activity:spawn";
+export const PROGRAM_STATUS_ACTIVITY_SPAWN_EVENT =
+  "program-status:activity:spawn";
 
-export interface RexActivitySpawnPayload {
+export interface ProgramStatusActivitySpawnPayload {
   /** Stable id; the record lives at `activity/<id>`. */
   id: string;
   title: string;
@@ -50,9 +51,10 @@ export interface RexActivitySpawnPayload {
 }
 
 /** Progress or a new message for an existing child record. */
-export const REX_ACTIVITY_UPDATE_EVENT = "rex:activity:update";
+export const PROGRAM_STATUS_ACTIVITY_UPDATE_EVENT =
+  "program-status:activity:update";
 
-export interface RexActivityUpdatePayload {
+export interface ProgramStatusActivityUpdatePayload {
   id: string;
   state: "working" | "blocked";
   kind?: "permission" | "question" | "auth";
@@ -63,9 +65,9 @@ export interface RexActivityUpdatePayload {
 }
 
 /** A child record finished. */
-export const REX_ACTIVITY_END_EVENT = "rex:activity:end";
+export const PROGRAM_STATUS_ACTIVITY_END_EVENT = "program-status:activity:end";
 
-export interface RexActivityEndPayload {
+export interface ProgramStatusActivityEndPayload {
   id: string;
   state: "done" | "error";
   msg?: string;

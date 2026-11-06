@@ -1,5 +1,5 @@
 {
-  "name": "@aliou/pi-rex",
+  "name": "@aliou/pi-program-status",
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
@@ -8,11 +8,11 @@
     "pi-package",
     "pi-extension",
     "pi",
-    "rex"
+    "program-status"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/aliou/pi-rex"
+    "url": "https://github.com/aliou/pi-program-status"
   },
   "pi": {
     "extensions": [
