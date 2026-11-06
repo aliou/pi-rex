@@ -16,8 +16,7 @@
   },
   "pi": {
     "extensions": [
-      "./extensions/program-status/index.ts",
-      "./extensions/rex/index.ts"
+      "./extensions/program-status/index.ts"
     ]
   },
   "publishConfig": {
@@ -33,9 +32,7 @@
     "!extensions/**/*.test.ts",
     "README.md"
   ],
-  "dependencies": {
-    "ws": "^8.19.0"
-  },
+  "dependencies": {},
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
   },
@@ -49,7 +46,6 @@
     "@biomejs/biome": "^2.6.4",
     "@earendil-works/pi-coding-agent": "1.4.0",
     "@types/node": "^25.0.10",
-    "@types/ws": "^8.18.1",
     "typescript": "^5.9.3"
   },
   "scripts": {

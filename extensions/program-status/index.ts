@@ -4,13 +4,11 @@ import {
   REX_ACTIVITY_SPAWN_EVENT,
   REX_ACTIVITY_UPDATE_EVENT,
   REX_BLOCKED_EVENT,
-  REX_FOREGROUND_EVENT,
   REX_STATE_EVENT,
   type RexActivityEndPayload,
   type RexActivitySpawnPayload,
   type RexActivityUpdatePayload,
   type RexBlockedPayload,
-  type RexForegroundPayload,
   type RexStatePayload,
 } from "../../src/contract";
 import type {
@@ -18,7 +16,6 @@ import type {
   StatusReport,
 } from "../../src/program-status/report";
 import { ProgramStatusWriter } from "../../src/program-status/writer";
-import { watchExternalEditor } from "./editor";
 
 /**
  * Program status (OSC 7501) for pi.
@@ -164,13 +161,9 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
     finishedText = undefined;
     currentTool = undefined;
     writer.reset();
-    // A previous process (or reload) can leave records behind that this
-    // version no longer writes, and `done` records survive process exit, so
-    // nothing else would clear them: the editor record (cleared on foreground
-    // changes, not on exit, and pi suspends while an editor runs, so a live
-    // record here is always stale), and the agent record the pre-fold design
-    // wrote. The writer is fresh, so force the clears past its history check.
-    writer.clear("editor", true);
+    // The agent child record an earlier version wrote outlives the process:
+    // `done` records survive exit, so nothing else clears it. The writer is
+    // fresh, so force the clear past its history check.
     writer.clear("agent", true);
     syncAgent();
     syncBlocked();
@@ -189,7 +182,6 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
     errorText = undefined;
     finishedText = undefined;
     currentTool = undefined;
-    writer.clear("editor");
     syncAgent(true);
     emitState("working");
   });
@@ -309,61 +301,11 @@ export default function programStatusExtension(pi: ExtensionAPI): void {
     syncActivity(payload.id);
   });
 
-  // An external program took the terminal foreground (ctrl+g opens $EDITOR,
-  // ctrl+z suspends pi). Show it as a working child record: rex drops working
-  // records when the foreground process exits, so the record disappears on
-  // its own when the editor closes.
-  //
-  // Pi itself is node, and process_changed fires when a finished tool's shell
-  // hands the foreground back to it — often right after agent_settled, so
-  // runActive is already false. Treating that as an editor used to write a
-  // working record that nothing ever cleared: the foreground stays pi, so no
-  // later event reaches the clear branch, and rex keeps the record while pi
-  // lives. Report only a foreground process we can tell isn't pi.
-  const stopForeground = pi.events.on(REX_FOREGROUND_EVENT, (data) => {
-    const payload = data as RexForegroundPayload | undefined;
-    if (!payload) return;
-    if (
-      payload.name &&
-      payload.pid &&
-      payload.pid !== process.pid &&
-      !runActive
-    ) {
-      writer.report({
-        state: "working",
-        id: "editor",
-        app: "pi",
-        title: "External editor",
-        msg: payload.name,
-      });
-      return;
-    }
-    writer.clear("editor");
-  });
-
-  // Same signal where rex cannot see it: pi keeps the pty's foreground group
-  // while $EDITOR runs, so watchExternalEditor reports the editor instead.
-  const stopEditorWatch = watchExternalEditor((editor, app) => {
-    if (editor && !runActive) {
-      writer.report({
-        state: "working",
-        id: "editor",
-        app,
-        title: "External editor",
-        msg: editor,
-      });
-      return;
-    }
-    writer.clear("editor");
-  });
-
   pi.on("session_shutdown", () => {
     stopBlocked();
     stopSpawn();
     stopUpdate();
     stopEnd();
-    stopForeground();
-    stopEditorWatch();
     enabled = false;
     blocked.clear();
     activity.clear();

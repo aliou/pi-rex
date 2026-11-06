@@ -43,7 +43,7 @@ interface WorkerConfig {
     kind: "permission" | "question" | "auth";
     msg: string;
   };
-  /** rex app key; picks the sidebar glyph. Defaults to pi. */
+  /** App key; picks the terminal's glyph. Defaults to pi. */
   app?: string;
 }
 
