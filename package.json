@@ -32,7 +32,6 @@
     "!extensions/**/*.test.ts",
     "README.md"
   ],
-  "dependencies": {},
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "*"
   },
@@ -42,7 +41,7 @@
     }
   },
   "devDependencies": {
-    "@aliou/biome-plugins": "^0.17.0",
+    "@aliou/biome-plugins": "^0.18.1",
     "@biomejs/biome": "^2.6.4",
     "@earendil-works/pi-coding-agent": "1.4.0",
     "@types/node": "^25.0.10",
